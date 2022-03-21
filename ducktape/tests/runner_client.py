@@ -29,7 +29,7 @@ from ducktape.tests.serde import SerDe
 from ducktape.tests.status import FLAKY
 from ducktape.tests.test import test_logger, TestContext
 
-from ducktape.tests.result import TestResult, IGNORE, PASS, FAIL
+from ducktape.tests.result import TestResult, IGNORE, PASS, FAIL, OPASS, OFAIL
 from ducktape.utils.local_filesystem_utils import mkdir_p
 
 
@@ -240,8 +240,10 @@ class RunnerClient(object):
                 # only check node utilization on test pass
                 if result == PASS or result == FLAKY:
                     self.log(logging.INFO, "FAIL: " + message)
-
-                result = FAIL
+                    result = FAIL
+                elif result == OPASS:
+                    self.log(logging.INFO, "OFAIL: " + message)
+                    result = OFAIL
                 summary += message
             else:
                 self.log(logging.WARN, message)

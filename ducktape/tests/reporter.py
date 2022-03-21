@@ -26,7 +26,7 @@ import pkg_resources
 
 from ducktape.utils.terminal_size import get_terminal_size
 from ducktape.utils.util import ducktape_version
-from ducktape.tests.status import PASS, FAIL, IGNORE, FLAKY
+from ducktape.tests.status import PASS, FAIL, IGNORE, FLAKY, OPASS, OFAIL
 from ducktape.json_serializable import DucktapeJSONEncoder
 
 
@@ -115,6 +115,8 @@ class SimpleSummaryReporter(SummaryReporter):
             "flaky:            %d" % self.results.num_flaky,
             "failed:           %d" % self.results.num_failed,
             "ignored:          %d" % self.results.num_ignored,
+            "opassed:          %d" % self.results.num_opassed,
+            "ofailed:          %d" % self.results.num_ofailed,
             "=" * self.width
         ]
 
@@ -126,15 +128,21 @@ class SimpleSummaryReporter(SummaryReporter):
         passed = []
         ignored = []
         failed = []
+        ofail = []
+        opass = []
         for result in self.results:
             if result.test_status == FAIL:
                 failed.append(result)
             elif result.test_status == IGNORE:
                 ignored.append(result)
+            elif result.test_status == OPASS:
+                opass.append(result)
+            elif result.test_status == OFAIL:
+                ofail.append(result)
             else:
                 passed.append(result)
 
-        ordered_results = passed + ignored + failed
+        ordered_results = passed + ignored + failed + opass + ofail
 
         report_lines = \
             [SingleResultReporter(result).result_string() + "\n" + "-" * self.width for result in ordered_results]
@@ -193,8 +201,13 @@ class JUnitReporter(object):
                 testsuite['failures'] += 1
             elif result.test_status == IGNORE:
                 testsuite['skipped'] += 1
+            elif result.test_status == OPASS:
+                testsuite['skipped'] += 1
+            elif result.test_status == OFAIL:
+                testsuite['skipped'] += 1
 
-        total = self.results.num_failed + self.results.num_ignored + self.results.num_passed + self.results.num_flaky
+        total = self.results.num_failed + self.results.num_ignored + self.results.num_passed + \
+            self.results.num_flaky + self.results.num_ofailed + self.results.num_opassed
         # Now start building XML document
         root = ET.Element('testsuites', attrib=dict(
             name="ducktape", time=str(self.results.run_time_seconds),
@@ -282,6 +295,8 @@ class HTMLSummaryReporter(SummaryReporter):
         passed_result_string = []
         ignored_result_string = []
         flaky_result_string = []
+        opassed_result_string = []
+        ofailed_result_string = []
 
         for result in self.results:
             json_string = json.dumps(self.format_result(result))
@@ -298,6 +313,12 @@ class HTMLSummaryReporter(SummaryReporter):
             elif result.test_status == FLAKY:
                 flaky_result_string.append(json_string)
                 flaky_result_string.append(",")
+            elif result.test_status == OPASS:
+                opassed_result_string.append(json_string)
+                opassed_result_string.append(",")
+            elif result.test_status == OFAIL:
+                ofailed_result_string.append(json_string)
+                ofailed_result_string.append(",")
             else:
                 raise Exception("Unknown test status in report: {}".format(result.test_status.to_json()))
 
@@ -308,12 +329,16 @@ class HTMLSummaryReporter(SummaryReporter):
             'num_flaky': self.results.num_flaky,
             'num_failures': self.results.num_failed,
             'num_ignored': self.results.num_ignored,
+            'num_opassed': self.results.num_opassed,
+            'num_ofailed': self.results.num_ofailed,
             'run_time': format_time(self.results.run_time_seconds),
             'session': self.results.session_context.session_id,
             'passed_tests': "".join(passed_result_string),
             'flaky_tests': "".join(flaky_result_string),
             'failed_tests': "".join(failed_result_string),
             'ignored_tests': "".join(ignored_result_string),
+            'ofailed_tests': "".join(ofailed_result_string),
+            'opassed_tests': "".join(opassed_result_string),
             'test_status_names': ",".join(["\'%s\'" % str(status) for status in [PASS, FAIL, IGNORE, FLAKY]])
         }
 
